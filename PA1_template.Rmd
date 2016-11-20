@@ -1,25 +1,96 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Assignment 1"
+author: "Tamás Jakab"
+date: "November 20, 2016"
+output: word_document
 ---
+Downloading, unzipping and loading the csv file into RStudio:
 
+```{r}
+link <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
 
-## Loading and preprocessing the data
+temp <- tempfile()
+download.file(link, temp)
+data <- read.csv(unz(temp, "activity.csv"),header = T, sep = ",")
+unlink(temp)
+```
 
+Calculating the total number of steps per day
+```{r}
+perday <- aggregate(.~ date, data = data, sum)
+```
 
+Histogram of the total number of steps taken each day
+```{r}
+hist(perday$steps, breaks = 10, main = "Total number of steps each day", xlab = "Steps")
+```
 
-## What is mean total number of steps taken per day?
+Mean and median number of steps taken each day
+```{r}
+mean(perday$steps)
+median(perday$steps)
+```
 
+Calculating the average steps per interval
+```{r}
+mean.inter <- aggregate(.~ interval, data = data, mean)
+```
 
+Time series plot of the average number of steps taken
+```{r}
+plot(x=mean.inter$interval, y =mean.inter$steps, type = "l", main = "Time series plot of the average number of steps taken", xlab = "Intervals", ylab = "Average steps")
+```
 
-## What is the average daily activity pattern?
+5-minute interval containing the maximum number of steps
+```{r}
+mean.inter[mean.inter$steps == max(mean.inter$steps),1]
+```
 
+Calculating the total number of rows with NAs
+```{r}
+sum(is.na(data))
+```
 
+Imputing missing values
+```{r}
+library(plyr)
+data2 <- data
+impute <- function(x, fun) {
+      missing <- is.na(x)
+      replace(x, missing, fun(x[!missing]))
+}
+data2 <-ddply(data2, ~ interval, transform, steps = impute(steps, mean))
+```
 
-## Imputing missing values
+Calculating the total number of steps per day(no NAs)
+```{r}
+perday2 <- aggregate(.~ date, data = data2, sum)
+```
 
+Histogram of the total number of steps taken each day(no NAs)
+```{r}
+hist(perday2$steps, breaks = 10, main = "Total number of steps each day", xlab = "Steps")
+```
 
+Mean and median number of steps taken each day(no NAs)
+```{r}
+mean(perday2$steps)
+median(perday2$steps)
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+Creating new factor variable
+```{r}
+data2$w <- weekdays(as.Date(data2$date))
+data2$weekday <- ifelse(data2$w == "Saturday" | data2$w == "Sunday", data2$w <-"weekend",data2$w <-"weekday")
+data2$w <- NULL
+```
+
+Creating average steps based on weekdays/weekend and ploting them
+```{r}
+par(mfrow = c(2,1))
+mean.interval.weekday <- aggregate(steps~ interval, data = subset(data2, weekday == "weekday"), mean)
+plot(x=mean.interval.weekday$interval, y =mean.interval.weekday$steps, type = "l", main = "Weekday", xlab = "Intervals", ylab = "Average steps")
+
+mean.interval.weekend <- aggregate(steps~ interval, data = subset(data2, weekday == "weekend"), mean)
+plot(x=mean.interval.weekend$interval, y =mean.interval.weekend$steps, type = "l", main = "Weekend", xlab = "Intervals", ylab = "Average steps")
+```
